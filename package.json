@@ -1,0 +1,49 @@
+{
+  "name": "bulk-personalized-videos",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bulk video generation with the Zvid API — render personalized videos at scale from a CSV/spreadsheet: one branded, automated video per customer, product, or listing. Node.js example using Zvid's bulk render endpoint and template variables.",
+  "keywords": [
+    "zvid",
+    "bulk video generation",
+    "bulk video generation api",
+    "personalized video",
+    "personalized video at scale",
+    "automated video creation",
+    "video api",
+    "json to video",
+    "json2video",
+    "video rendering api",
+    "csv to video",
+    "video automation",
+    "programmatic video",
+    "video template api",
+    "ecommerce video",
+    "video marketing automation",
+    "nodejs"
+  ],
+  "homepage": "https://zvid.io",
+  "docs": "https://docs.zvid.io/automation/bulk-rendering",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zvid/zvid-examples",
+    "directory": "bulk-personalized-videos"
+  },
+  "bugs": {
+    "url": "https://github.com/zvid/zvid-examples/issues"
+  },
+  "author": "Zvid <help@zvid.io> (https://zvid.io)",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dry-run": "node src/index.js --dry-run",
+    "sample": "node src/index.js --limit 2"
+  },
+  "dependencies": {
+    "csv-parse": "^6.0.0"
+  }
+}

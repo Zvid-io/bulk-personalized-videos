@@ -1,0 +1,222 @@
+{
+  "name": "personalized-offer",
+  "resolution": "instagram-reel",
+  "frameRate": 30,
+  "backgroundColor": "#000000",
+  "outputFormat": "mp4",
+  "variables": {
+    "brandName": "ARCADIA",
+    "firstName": "Alex",
+    "headline": "We picked this<br>just for you.",
+    "subheadline": "A private offer from this season's collection.",
+    "accentColor": "#C6FF3D",
+    "showOffer": true,
+    "offerKicker": "YOUR PERSONAL OFFER",
+    "discountLabel": "20% OFF",
+    "productName": "The Field Watch",
+    "productMeta": "Sapphire glass · Italian leather",
+    "productImage": "https://images.pexels.com/photos/11403924/pexels-photo-11403924.jpeg?auto=compress&cs=tinysrgb&h=1920",
+    "couponCode": "ALEX-20",
+    "ctaHeadline": "Your code is ready.",
+    "ctaUrl": "arcadia.example/offer",
+    "musicUrl": "https://cdn.pixabay.com/audio/2025/03/19/audio_56ae1dae5f.mp3"
+  },
+  "scenes": [
+    {
+      "id": "intro",
+      "duration": 3.8,
+      "backgroundColor": "#000000",
+      "transition": "wipeleft",
+      "transitionId": "product",
+      "transitionDuration": 0.5,
+      "visuals": [
+        {
+          "type": "SVG",
+          "width": 1080,
+          "height": 1920,
+          "track": 0,
+          "enterBegin": 0,
+          "exitEnd": 3.8,
+          "svg": "<svg width='1080' height='1920' viewBox='0 0 1080 1920' xmlns='http://www.w3.org/2000/svg'><rect width='1080' height='1920' fill='#000000'/><rect x='0' y='300' width='1080' height='120' fill='{{accentColor}}'/><path d='M0 1600 H1080' stroke='rgba(255,255,255,0.18)' stroke-width='2'/></svg>"
+        },
+        {
+          "type": "TEXT",
+          "x": 540,
+          "y": 360,
+          "anchor": "center-center",
+          "track": 1,
+          "enterBegin": 0.15,
+          "enterEnd": 0.6,
+          "enterAnimation": "fade",
+          "exitEnd": 3.8,
+          "style": {
+            "fontFamily": "Archivo"
+          },
+          "html": "<div style='text-align:center; color:rgba(0,0,0,0.55); font-size:24px; font-weight:800; letter-spacing:10px;'>{{brandName}}</div><div style='margin-top:8px; text-align:center; color:#000000; font-size:64px; font-weight:800; letter-spacing:12px; text-transform:uppercase;'>HEY, {{firstName}}</div>"
+        },
+        {
+          "type": "TEXT",
+          "x": 540,
+          "y": 640,
+          "width": 940,
+          "anchor": "top-center",
+          "track": 2,
+          "enterBegin": 0.4,
+          "enterEnd": 0.9,
+          "enterAnimation": "smoothup",
+          "exitEnd": 3.8,
+          "style": {
+            "fontFamily": "Archivo"
+          },
+          "html": "<div style='text-align:center; color:#FFFFFF; font-size:96px; line-height:1; font-weight:800; letter-spacing:-3px;'>{{headline}}</div><div style='margin-top:28px; text-align:center; color:{{accentColor}}; font-size:34px; font-weight:700; letter-spacing:2px;'>{{subheadline}}</div>"
+        },
+        {
+          "type": "TEXT",
+          "condition": "{{showOffer}}",
+          "x": 540,
+          "y": 1280,
+          "anchor": "top-center",
+          "track": 3,
+          "enterBegin": 0.8,
+          "enterEnd": 1.25,
+          "enterAnimation": "circleopen",
+          "exitEnd": 3.8,
+          "style": {
+            "fontFamily": "Archivo"
+          },
+          "html": "<div style='text-align:center; color:#7A7A7A; font-size:26px; font-weight:800; letter-spacing:5px;'>{{offerKicker}}</div><div style='margin-top:16px; display:inline-block; border:2px solid {{accentColor}}; color:{{accentColor}}; border-radius:16px; padding:20px 44px; font-size:72px; font-weight:800; letter-spacing:4px;'>{{discountLabel}}</div>"
+        }
+      ]
+    },
+    {
+      "id": "product",
+      "duration": 3.4,
+      "backgroundColor": "#000000",
+      "transition": "wipeleft",
+      "transitionId": "cta",
+      "transitionDuration": 0.45,
+      "visuals": [
+        {
+          "type": "IMAGE",
+          "src": "{{productImage}}",
+          "width": 1080,
+          "height": 1920,
+          "position": "center-center",
+          "resize": "cover",
+          "zoom": true,
+          "track": 0,
+          "enterBegin": 0,
+          "exitEnd": 3.4
+        },
+        {
+          "type": "SVG",
+          "width": 1080,
+          "height": 1920,
+          "track": 1,
+          "enterBegin": 0,
+          "exitEnd": 3.4,
+          "svg": "<svg width='1080' height='1920' viewBox='0 0 1080 1920' xmlns='http://www.w3.org/2000/svg'><defs><linearGradient id='lkShade' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#000000' stop-opacity='0.55'/><stop offset='0.4' stop-color='#000000' stop-opacity='0.1'/><stop offset='1' stop-color='#000000' stop-opacity='0.92'/></linearGradient></defs><rect width='1080' height='1920' fill='url(#lkShade)'/></svg>"
+        },
+        {
+          "type": "TEXT",
+          "x": 90,
+          "y": 150,
+          "anchor": "top-left",
+          "track": 3,
+          "enterBegin": 0.25,
+          "enterEnd": 0.65,
+          "enterAnimation": "smoothleft",
+          "exitEnd": 3.4,
+          "style": {
+            "fontFamily": "Archivo"
+          },
+          "html": "<div style='display:inline-block; background:{{accentColor}}; color:#000000; border-radius:10px; padding:14px 34px; font-size:60px; font-weight:800; letter-spacing:-1px;'>{{discountLabel}}</div>"
+        },
+        {
+          "type": "TEXT",
+          "x": 90,
+          "y": 1420,
+          "width": 900,
+          "anchor": "top-left",
+          "track": 2,
+          "enterBegin": 0.4,
+          "enterEnd": 0.85,
+          "enterAnimation": "smoothup",
+          "exitEnd": 3.4,
+          "style": {
+            "fontFamily": "Archivo"
+          },
+          "html": "<div style='color:#FFFFFF; font-size:88px; line-height:1; font-weight:800; letter-spacing:-2px;'>{{productName}}</div><div style='margin-top:16px; color:#B8B8B8; font-size:32px; font-weight:500;'>{{productMeta}}</div>"
+        }
+      ]
+    },
+    {
+      "id": "cta",
+      "duration": 4,
+      "backgroundColor": "#000000",
+      "visuals": [
+        {
+          "type": "SVG",
+          "width": 1080,
+          "height": 1920,
+          "track": 0,
+          "enterBegin": 0,
+          "exitEnd": 4,
+          "svg": "<svg width='1080' height='1920' viewBox='0 0 1080 1920' xmlns='http://www.w3.org/2000/svg'><rect width='1080' height='1920' fill='#000000'/><rect x='0' y='860' width='1080' height='200' fill='{{accentColor}}'/></svg>"
+        },
+        {
+          "type": "TEXT",
+          "x": 540,
+          "y": 640,
+          "width": 900,
+          "anchor": "top-center",
+          "track": 1,
+          "enterBegin": 0.3,
+          "enterEnd": 0.75,
+          "enterAnimation": "smoothup",
+          "exitEnd": 4,
+          "style": {
+            "fontFamily": "Archivo"
+          },
+          "html": "<div style='text-align:center; color:#FFFFFF; font-size:70px; line-height:1.06; font-weight:800; letter-spacing:-2px;'>{{ctaHeadline}}</div>"
+        },
+        {
+          "type": "TEXT",
+          "x": 540,
+          "y": 960,
+          "anchor": "center-center",
+          "track": 2,
+          "enterBegin": 0.6,
+          "enterEnd": 1.05,
+          "enterAnimation": "circleopen",
+          "exitEnd": 4,
+          "style": {
+            "fontFamily": "Archivo"
+          },
+          "html": "<div style='text-align:center; color:#000000; font-size:76px; font-weight:800; letter-spacing:2px;'>{{couponCode}}</div>"
+        },
+        {
+          "type": "TEXT",
+          "x": 540,
+          "y": 1200,
+          "anchor": "top-center",
+          "track": 3,
+          "enterBegin": 1,
+          "enterEnd": 1.4,
+          "enterAnimation": "fade",
+          "exitEnd": 4,
+          "style": {
+            "fontFamily": "Archivo"
+          },
+          "html": "<div style='text-align:center; color:{{accentColor}}; font-size:28px; font-weight:700; letter-spacing:4px;'>{{ctaUrl}}</div>"
+        }
+      ]
+    }
+  ],
+  "audios": [
+    {
+      "src": "{{musicUrl}}",
+      "volume": 0.17
+    }
+  ]
+}
