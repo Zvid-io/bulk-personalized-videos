@@ -55,9 +55,8 @@ async function main() {
     return EXIT_OK;
   }
 
-  console.log(process.env.ZVID_API_KEYY)
   const client = new ZvidClient({
-    apiKey: process.env.ZVID_API_KEYY,
+    apiKey: process.env.ZVID_API_KEY,
     baseUrl: process.env.ZVID_API_URL || undefined,
   });
 
@@ -132,15 +131,17 @@ async function main() {
     );
 
     // Items the API rejected during per-item validation (the rest still run).
-    for (const itemError of response.errors ?? []) {
+    for (const itemError of response.itemErrors ?? []) {
       const index = itemError.item ?? itemError.index;
       const item = typeof index === 'number' ? batch[index] : undefined;
       const where = item ? `CSV row ${item.row}` : `item ${index}`;
-      const details = (itemError.details ?? [])
+      const details = (itemError.errors ?? itemError.details ?? [])
         .map((d) => `${d.field}: ${d.message}`)
         .join('; ');
       console.error(
-        color.yellow(`  ⚠ ${where} rejected: ${details || itemError.error || 'invalid'}`)
+        color.yellow(
+          `  ⚠ ${where} rejected: ${details || itemError.error || itemError.message || 'invalid'}`
+        )
       );
     }
   }

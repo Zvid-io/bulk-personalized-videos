@@ -70,7 +70,7 @@ x-api-key: YOUR_API_KEY
 - **`items`** is your spreadsheet: each entry's `variables` merge over the
   batch-level `variables`, which merge over the template defaults.
 - Validation is **best-effort per item**: valid rows queue immediately, broken
-  rows come back in the response's `errors` array with field-level messages —
+  rows come back in the response's `itemErrors` array with field-level messages —
   one bad row never sinks the batch.
 - The `202` response returns a `bulkId`; poll `GET /api/render/bulk/{bulkId}`
   until every job is terminal, or set `ZVID_WEBHOOK_URL` to get a signed
