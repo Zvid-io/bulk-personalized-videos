@@ -1,0 +1,438 @@
+{
+  "id": "ZvidBulkPersonal",
+  "name": "Bulk personalized videos from CSV (Zvid)",
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "nodes": [
+    {
+      "id": "note-overview",
+      "name": "Sticky Note - Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-260, -400],
+      "parameters": {
+        "width": 620,
+        "height": 320,
+        "content": "## Bulk personalized videos from a CSV\nn8n port of [Zvid-io/bulk-personalized-videos](https://github.com/Zvid-io/bulk-personalized-videos): one designed template + one CSV row per customer = one branded 1080x1920 video each, via a single `POST /api/render/bulk/api-key` call.\n\n**Setup**\n1. Create an API key at app.zvid.io -> API Keys.\n2. Create a **Header Auth** credential: name `x-api-key`, value = your key. Attach it to *Validate row (free)*, *Submit bulk render* and *Get batch status*.\n3. Tweak **Campaign Config**: point `csvUrl` / `templateUrl` / `campaignUrl` at your own files, set `rowLimit` (0 = all rows), or `dryRun: true` for a free per-row validation + credit estimate."
+      }
+    },
+    {
+      "id": "note-poll",
+      "name": "Sticky Note - Polling",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [1980, -80],
+      "parameters": {
+        "width": 700,
+        "height": 220,
+        "color": 4,
+        "content": "### Submit + poll\nOne request fans out into N render jobs (202 -> `bulkId`). We poll `GET /api/render/bulk/:id` every `pollSeconds` until `bulk.status` leaves `processing` (jobs are terminal), with a `timeoutMinutes` guard. Credits for failed jobs are refunded automatically.\n\nJob `name` is **null until completed** - results are mapped back to CSV rows by `jobId`, never by name."
+      }
+    },
+    {
+      "id": "note-output",
+      "name": "Sticky Note - Output",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [2980, -80],
+      "parameters": {
+        "width": 620,
+        "height": 220,
+        "color": 5,
+        "content": "### Outputs\nWrites `results.csv` (csv_row, name, status, video_url, thumbnail_url, credits, error) and downloads every finished MP4 into `outDir` **inside the n8n container/host** (`docker cp n8n:/home/node/.n8n-files/zvid-out .` to fetch). `outDir` must exist: `docker exec n8n mkdir -p /home/node/.n8n-files/zvid-out`. Set `downloadVideos: false` to keep videos on Zvid's CDN only - the manifest still gets every URL.\nSwap the two *Save* nodes for Google Drive / S3 / email nodes to ship results elsewhere."
+      }
+    },
+    {
+      "id": "n-manual",
+      "name": "When clicking 'Execute workflow'",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-180, 96],
+      "parameters": {}
+    },
+    {
+      "id": "n-config",
+      "name": "Campaign Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [20, 96],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"apiUrl\": \"https://api.zvid.io\",\n  \"templateUrl\": \"https://raw.githubusercontent.com/Zvid-io/bulk-personalized-videos/master/template.json\",\n  \"campaignUrl\": \"https://raw.githubusercontent.com/Zvid-io/bulk-personalized-videos/master/campaign.json\",\n  \"csvUrl\": \"https://raw.githubusercontent.com/Zvid-io/bulk-personalized-videos/master/data/customers.csv\",\n  \"batchName\": \"personalized-offers (n8n)\",\n  \"rowLimit\": 0,\n  \"dryRun\": false,\n  \"pollSeconds\": 5,\n  \"timeoutMinutes\": 30,\n  \"downloadVideos\": true,\n  \"outDir\": \"/home/node/.n8n-files/zvid-out\"\n}",
+        "options": {}
+      }
+    },
+    {
+      "id": "n-fetch-template",
+      "name": "Fetch template.json",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 96],
+      "parameters": {
+        "url": "={{ $json.templateUrl }}",
+        "options": { "response": { "response": { "responseFormat": "json" } } }
+      }
+    },
+    {
+      "id": "n-fetch-campaign",
+      "name": "Fetch campaign.json",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [420, 96],
+      "parameters": {
+        "url": "={{ $('Campaign Config').first().json.campaignUrl }}",
+        "options": { "response": { "response": { "responseFormat": "json" } } }
+      }
+    },
+    {
+      "id": "n-fetch-csv",
+      "name": "Fetch customers.csv",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [620, 96],
+      "parameters": {
+        "url": "={{ $('Campaign Config').first().json.csvUrl }}",
+        "options": { "response": { "response": { "responseFormat": "file" } } }
+      }
+    },
+    {
+      "id": "n-parse-csv",
+      "name": "Parse CSV rows",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [820, 96],
+      "parameters": {
+        "operation": "csv",
+        "options": {}
+      }
+    },
+    {
+      "id": "n-build-items",
+      "name": "Build bulk items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1020, 96],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Mirrors src/csv.js of the CLI example: required-column checks,\n// per-row validation, slugified job names, optional row limit.\nconst REQUIRED = ['first_name','product_name','product_tagline','product_image','discount_label','coupon_code','cta_url'];\nconst cfg = $('Campaign Config').first().json;\nconst rows = $input.all().map((i) => i.json);\nif (rows.length === 0) throw new Error('CSV contains no data rows');\n\nconst missing = REQUIRED.filter((c) => !(c in rows[0]));\nif (missing.length) {\n  throw new Error(`CSV is missing required column(s): ${missing.join(', ')}. Expected header: ${REQUIRED.join(',')}`);\n}\n\nconst slugify = (v) => String(v).toLowerCase().normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'row';\nconst isHttpUrl = (v) => /^https?:\\/\\//i.test(String(v).trim());\n\nconst items = [];\nconst rowErrors = [];\nrows.forEach((record, index) => {\n  const row = index + 1; // 1-based CSV data row (header excluded)\n  const problems = [];\n  for (const c of REQUIRED) if (!record[c]) problems.push(`\"${c}\" is empty`);\n  if (record.product_image && !isHttpUrl(record.product_image)) problems.push('\"product_image\" must be an http(s) URL');\n  if (problems.length) { rowErrors.push({ row, error: problems.join('; ') }); return; }\n  items.push({\n    row,\n    name: `offer-${slugify(record.first_name)}-r${row}`,\n    variables: {\n      firstName: record.first_name,\n      productName: record.product_name,\n      productMeta: record.product_tagline,\n      productImage: record.product_image,\n      discountLabel: record.discount_label,\n      couponCode: record.coupon_code,\n      ctaUrl: record.cta_url,\n    },\n  });\n});\n\nif (items.length === 0) throw new Error('No valid rows in the CSV - nothing to render. Reasons: ' + JSON.stringify(rowErrors.slice(0, 5)));\nconst limit = Number(cfg.rowLimit) || 0;\nconst limited = limit > 0 ? items.slice(0, limit) : items;\n// rowErrors ride on the first item so the manifest can report skipped rows\nreturn limited.map((it, i) => ({ json: i === 0 ? { ...it, rowErrors } : it }));"
+      }
+    },
+    {
+      "id": "n-if-dryrun",
+      "name": "Dry run?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1220, 96],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2 },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "c-dryrun",
+              "leftValue": "={{ $('Campaign Config').first().json.dryRun }}",
+              "rightValue": "",
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "n-validate",
+      "name": "Validate row (free)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1460, -64],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Campaign Config').first().json.apiUrl }}/api/render/validate/api-key",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ payload: $('Fetch template.json').first().json, variables: Object.assign({}, $('Fetch campaign.json').first().json, $json.variables) }) }}",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": { "id": "ZvidXApiKeyCred1", "name": "Zvid API key (x-api-key)" }
+      }
+    },
+    {
+      "id": "n-estimate",
+      "name": "Credit estimate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1660, -64],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Per-row validation report + total credit estimate. No credits spent.\nconst items = $('Build bulk items').all().map((i) => i.json);\nconst results = $input.all().map((i) => i.json);\nlet creditsRequired = 0;\nlet invalid = 0;\nconst rows = results.map((r, i) => {\n  const item = items[i] || {};\n  if (r.error || r.valid === false) {\n    invalid += 1;\n    const message = typeof r.error === 'string' ? r.error : (r.error && r.error.message) || r.message || 'invalid';\n    return { csv_row: item.row, name: item.name, valid: false, error: message };\n  }\n  creditsRequired += r.creditsRequired || 0;\n  return { csv_row: item.row, name: item.name, valid: true, credits: r.creditsRequired, layoutWarnings: (r.warnings || []).length };\n});\nreturn [{ json: {\n  dryRun: true,\n  videos: results.length - invalid,\n  invalidRows: invalid,\n  creditsRequired,\n  note: 'No credits were spent. Set dryRun=false in Campaign Config to render.',\n  rows,\n} }];"
+      }
+    },
+    {
+      "id": "n-build-request",
+      "name": "Build bulk request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1460, 224],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// One envelope fans out into N render jobs - same shape as the CLI example:\n// item variables merge over batch variables merge over template defaults.\nconst cfg = $('Campaign Config').first().json;\nconst items = $input.all().map((i) => i.json);\nreturn [{ json: {\n  request: {\n    payload: $('Fetch template.json').first().json,\n    variables: $('Fetch campaign.json').first().json,\n    items: items.map(({ variables, name }) => ({ variables, name })),\n    name: cfg.batchName,\n  },\n  itemsMeta: items.map(({ row, name }) => ({ row, name })),\n  rowErrors: $('Build bulk items').first().json.rowErrors || [],\n} }];"
+      }
+    },
+    {
+      "id": "n-submit",
+      "name": "Submit bulk render",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1660, 224],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Campaign Config').first().json.apiUrl }}/api/render/bulk/api-key",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.request) }}",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": { "id": "ZvidXApiKeyCred1", "name": "Zvid API key (x-api-key)" }
+      }
+    },
+    {
+      "id": "n-wait",
+      "name": "Wait before poll",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1860, 224],
+      "webhookId": "7d9f2b6e-3c41-4e8a-9f5b-2f8c1d0a6b3e",
+      "parameters": {
+        "amount": "={{ $('Campaign Config').first().json.pollSeconds }}"
+      }
+    },
+    {
+      "id": "n-get-status",
+      "name": "Get batch status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2060, 224],
+      "parameters": {
+        "url": "={{ $('Campaign Config').first().json.apiUrl }}/api/render/bulk/{{ $('Submit bulk render').first().json.bulkId }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": { "id": "ZvidXApiKeyCred1", "name": "Zvid API key (x-api-key)" }
+      }
+    },
+    {
+      "id": "n-if-done",
+      "name": "All jobs finished?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [2260, 224],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "c-done",
+              "leftValue": "={{ $json.bulk.status }}",
+              "rightValue": "processing",
+              "operator": { "type": "string", "operation": "notEquals" }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "n-timeout",
+      "name": "Poll timeout guard",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2260, 384],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Loop back to Wait unless we have polled for longer than timeoutMinutes.\nconst cfg = $('Campaign Config').first().json;\nconst status = $input.first().json;\nconst maxPolls = Math.ceil((Number(cfg.timeoutMinutes || 30) * 60) / Math.max(2, Number(cfg.pollSeconds || 5)));\nif ($runIndex >= maxPolls) {\n  const pending = status.bulk && status.bulk.counts ? status.bulk.counts.pending : '?';\n  const bulkId = $('Submit bulk render').first().json.bulkId;\n  throw new Error(`Timed out after ${cfg.timeoutMinutes} min with ${pending} job(s) still rendering. Check later: GET ${cfg.apiUrl}/api/render/bulk/${bulkId}`);\n}\nreturn $input.all();"
+      }
+    },
+    {
+      "id": "n-manifest",
+      "name": "Build manifest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2460, 224],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Join poll results back to CSV rows BY JOB ID (job name is null until\n// completed), plus rows the API rejected at submit and rows skipped locally.\nconst status = $input.first().json; // { bulk, jobs }\nconst submit = $('Submit bulk render').first().json; // 202: bulkId, jobs[{jobId,index,name}], errors[]\nconst meta = $('Build bulk request').first().json;\n\nconst itemByJobId = new Map();\nfor (const job of submit.jobs || []) itemByJobId.set(job.jobId, meta.itemsMeta[job.index]);\n\nconst rows = (status.jobs || []).map((job) => {\n  const item = itemByJobId.get(job.id) || {};\n  return {\n    csv_row: item.row != null ? item.row : null,\n    name: job.name || item.name || job.id,\n    status: job.status,\n    video_url: job.outputUrl || '',\n    thumbnail_url: job.thumbnailUrl || '',\n    credits: job.creditsConsumed != null ? job.creditsConsumed : null,\n    error: job.errorMessage || '',\n  };\n});\n\n// Items rejected during the API's per-item validation (0-based `item` index)\nfor (const e of submit.errors || submit.itemErrors || []) {\n  const idx = e.item != null ? e.item : e.index;\n  const item = typeof idx === 'number' ? meta.itemsMeta[idx] : undefined;\n  const details = (e.errors || e.details || []).map((d) => `${d.field}: ${d.message}`).join('; ');\n  rows.push({ csv_row: item ? item.row : null, name: item ? item.name : `item-${idx}`, status: 'rejected', video_url: '', thumbnail_url: '', credits: null, error: details || e.error || e.message || 'invalid' });\n}\n\n// Rows skipped before submit (empty fields / bad image URL)\nfor (const e of meta.rowErrors || []) {\n  rows.push({ csv_row: e.row, name: '', status: 'skipped', video_url: '', thumbnail_url: '', credits: null, error: e.error });\n}\n\nrows.sort((a, b) => ((a.csv_row != null ? a.csv_row : 1e9) - (b.csv_row != null ? b.csv_row : 1e9)));\nreturn rows.map((r) => ({ json: r }));"
+      }
+    },
+    {
+      "id": "n-tocsv",
+      "name": "Manifest to CSV",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [2660, 96],
+      "parameters": {
+        "operation": "csv",
+        "options": { "fileName": "results.csv" }
+      }
+    },
+    {
+      "id": "n-save-csv",
+      "name": "Save results.csv",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [2860, 96],
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $('Campaign Config').first().json.outDir }}/results.csv",
+        "dataPropertyName": "data",
+        "options": {}
+      }
+    },
+    {
+      "id": "n-summary",
+      "name": "Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3060, 96],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const manifest = $('Build manifest').all().map((i) => i.json);\nconst submit = $('Submit bulk render').first().json;\nconst cfg = $('Campaign Config').first().json;\nconst rendered = manifest.filter((r) => r.status === 'completed');\nconst problems = manifest.filter((r) => r.status !== 'completed');\nreturn [{ json: {\n  rendered: rendered.length,\n  failedOrSkipped: problems.length,\n  creditsReserved: submit.creditsReserved,\n  bulkId: submit.bulkId,\n  outDir: cfg.downloadVideos ? cfg.outDir : '(video downloads disabled - URLs in manifest)',\n  videos: rendered.map((r) => ({ name: r.name, url: r.video_url })),\n  problems,\n} }];"
+      }
+    },
+    {
+      "id": "n-filter-completed",
+      "name": "Filter completed videos",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [2660, 320],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2 },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "c-completed",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "completed",
+              "operator": { "type": "string", "operation": "equals" }
+            },
+            {
+              "id": "c-download",
+              "leftValue": "={{ $('Campaign Config').first().json.downloadVideos }}",
+              "rightValue": "",
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "n-download",
+      "name": "Download video",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2860, 320],
+      "parameters": {
+        "url": "={{ $json.video_url }}",
+        "options": { "response": { "response": { "responseFormat": "file" } } }
+      }
+    },
+    {
+      "id": "n-save-mp4",
+      "name": "Save MP4",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [3060, 320],
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $('Campaign Config').first().json.outDir }}/{{ $('Filter completed videos').item.json.name }}.mp4",
+        "dataPropertyName": "data",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "When clicking 'Execute workflow'": {
+      "main": [[{ "node": "Campaign Config", "type": "main", "index": 0 }]]
+    },
+    "Campaign Config": {
+      "main": [[{ "node": "Fetch template.json", "type": "main", "index": 0 }]]
+    },
+    "Fetch template.json": {
+      "main": [[{ "node": "Fetch campaign.json", "type": "main", "index": 0 }]]
+    },
+    "Fetch campaign.json": {
+      "main": [[{ "node": "Fetch customers.csv", "type": "main", "index": 0 }]]
+    },
+    "Fetch customers.csv": {
+      "main": [[{ "node": "Parse CSV rows", "type": "main", "index": 0 }]]
+    },
+    "Parse CSV rows": {
+      "main": [[{ "node": "Build bulk items", "type": "main", "index": 0 }]]
+    },
+    "Build bulk items": {
+      "main": [[{ "node": "Dry run?", "type": "main", "index": 0 }]]
+    },
+    "Dry run?": {
+      "main": [
+        [{ "node": "Validate row (free)", "type": "main", "index": 0 }],
+        [{ "node": "Build bulk request", "type": "main", "index": 0 }]
+      ]
+    },
+    "Validate row (free)": {
+      "main": [[{ "node": "Credit estimate", "type": "main", "index": 0 }]]
+    },
+    "Build bulk request": {
+      "main": [[{ "node": "Submit bulk render", "type": "main", "index": 0 }]]
+    },
+    "Submit bulk render": {
+      "main": [[{ "node": "Wait before poll", "type": "main", "index": 0 }]]
+    },
+    "Wait before poll": {
+      "main": [[{ "node": "Get batch status", "type": "main", "index": 0 }]]
+    },
+    "Get batch status": {
+      "main": [[{ "node": "All jobs finished?", "type": "main", "index": 0 }]]
+    },
+    "All jobs finished?": {
+      "main": [
+        [{ "node": "Build manifest", "type": "main", "index": 0 }],
+        [{ "node": "Poll timeout guard", "type": "main", "index": 0 }]
+      ]
+    },
+    "Poll timeout guard": {
+      "main": [[{ "node": "Wait before poll", "type": "main", "index": 0 }]]
+    },
+    "Build manifest": {
+      "main": [[
+        { "node": "Manifest to CSV", "type": "main", "index": 0 },
+        { "node": "Filter completed videos", "type": "main", "index": 0 }
+      ]]
+    },
+    "Manifest to CSV": {
+      "main": [[{ "node": "Save results.csv", "type": "main", "index": 0 }]]
+    },
+    "Save results.csv": {
+      "main": [[{ "node": "Summary", "type": "main", "index": 0 }]]
+    },
+    "Filter completed videos": {
+      "main": [[{ "node": "Download video", "type": "main", "index": 0 }]]
+    },
+    "Download video": {
+      "main": [[{ "node": "Save MP4", "type": "main", "index": 0 }]]
+    }
+  }
+}
