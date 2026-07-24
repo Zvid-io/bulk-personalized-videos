@@ -584,6 +584,22 @@
         "dataPropertyName": "data",
         "options": {}
       }
+    },
+    {
+      "id": "note-package",
+      "name": "Sticky Note - Official nodes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -260,
+        480
+      ],
+      "parameters": {
+        "width": 640,
+        "height": 430,
+        "color": 6,
+        "content": "### Optional: official Zvid nodes (`@zvid/n8n-nodes-zvid`)\nThis workflow runs on n8n **core nodes only** - nothing extra to install. If you self-host n8n, you can install Zvid's official community package and swap the raw HTTP pieces for native nodes:\n\n**Install** (self-hosted n8n)\n1. **Settings → Community Nodes → Install** and enter `@zvid/n8n-nodes-zvid`  \n   (manual alternative: `cd ~/.n8n/nodes && npm install @zvid/n8n-nodes-zvid`, then restart n8n).\n2. Create its **Zvid API** credential with the same API key (`zvid_...` from app.zvid.io → API Keys).\n\n**What it replaces here**\n- *Zvid node → Render → Create Bulk* (+ \"Wait for Completion\") = *Build bulk request* + *Submit bulk render* + the whole poll loop\n- *Zvid node → Render → Validate* (free) = the *Validate row (free)* dry-run branch\n- *Zvid Trigger* = signed `render.completed` / `render.failed` events instead of polling\n\nn8n **Cloud** can only install verified community nodes - until `@zvid/n8n-nodes-zvid` is verified there, use this workflow as-is (that's exactly why it sticks to core nodes)."
+      }
     }
   ],
   "connections": {

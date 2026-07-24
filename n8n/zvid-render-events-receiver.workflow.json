@@ -140,6 +140,22 @@
         "color": 5,
         "content": "### Your actions go here\nEach completed event arrives with `name`, `csv_row`, `video_url`, `thumbnail_url`, `credits`. Typical swaps for the placeholder:\n- **Gmail / SMTP**: e-mail each customer their personalized video link.\n- **Google Sheets**: append a results row (the event-driven results.csv).\n- **Slack**: notify the campaign channel with the thumbnail.\n\nFailed events have only `jobId` + `error`; credits are refunded automatically - log them or alert."
       }
+    },
+    {
+      "id": "note-package",
+      "name": "Sticky Note - Official nodes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -260,
+        280
+      ],
+      "parameters": {
+        "width": 640,
+        "height": 400,
+        "color": 6,
+        "content": "### Optional: official Zvid Trigger (`@zvid/n8n-nodes-zvid`)\nThis receiver uses only the core Webhook node - nothing extra to install. Self-hosting? Install Zvid's official community package instead:\n\n**Install** (self-hosted n8n)\n1. **Settings → Community Nodes → Install** and enter `@zvid/n8n-nodes-zvid`  \n   (manual alternative: `cd ~/.n8n/nodes && npm install @zvid/n8n-nodes-zvid`, then restart n8n).\n2. Create its **Zvid API** credential with the same API key (`zvid_...` from app.zvid.io → API Keys).\n\nIts **Zvid Trigger** node replaces this Webhook trigger outright: it registers an account webhook when the workflow activates, removes it on deactivation, and **verifies the HMAC `X-Zvid-Signature`** of every delivery (unsigned or tampered requests get a 401) - no token-in-the-URL tricks needed.\nn8n **Cloud** can only install verified community nodes - until `@zvid/n8n-nodes-zvid` is verified there, use this workflow as-is (that's exactly why it sticks to core nodes)."
+      }
     }
   ],
   "connections": {
