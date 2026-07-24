@@ -1,0 +1,187 @@
+{
+  "id": "ZvidBulkWhEvents",
+  "name": "Zvid render events receiver (webhook variant)",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "nodes": [
+    {
+      "id": "note-setup",
+      "name": "Sticky Note - Setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -260,
+        -460
+      ],
+      "parameters": {
+        "width": 680,
+        "height": 400,
+        "content": "## Webhook variant - receiver side\nGets one POST from Zvid per finished render job and runs your per-video action (email the customer, append to a sheet, post to Slack...). Pair it with the *webhook submit* workflow, which passes this workflow's URL as `webhookUrl`.\n\n**Setup**\n1. **Activate** this workflow, copy the production URL of the *Zvid render event* webhook (`.../webhook/zvid-render-events`) into the submit workflow's `webhookReceiverUrl`.\n2. The URL must be publicly reachable (Zvid refuses private/localhost URLs in production; use a tunnel for local n8n).\n3. Replace the two placeholder nodes with your real actions.\n\n**Security**: per-request deliveries are **unsigned** (the URL travelled inside your authenticated submit) - treat the URL as a secret. For defense in depth, add a token query string to the URL in the submit config (e.g. `...?token=SECRET`) and check `{{ $json.query.token }}` in an IF node here. Account-level endpoints registered via `POST /api/webhooks` DO get an HMAC `X-Zvid-Signature` you can verify instead - or install the official [`@zvid/n8n-nodes-zvid`](https://www.npmjs.com/package/@zvid/n8n-nodes-zvid) package and use its **Zvid Trigger** node, which registers the endpoint and verifies signatures for you."
+      }
+    },
+    {
+      "id": "note-payload",
+      "name": "Sticky Note - Payload",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        460,
+        -460
+      ],
+      "parameters": {
+        "width": 560,
+        "height": 400,
+        "color": 4,
+        "content": "### What Zvid sends\n```\nPOST, Content-Type: application/json\nX-Zvid-Event: render.completed | render.failed\nX-Zvid-Job-Id / X-Zvid-Delivery-Id / X-Zvid-Timestamp\n\n{ \"event\": \"render.completed\",\n  \"jobId\": \"...\",\n  \"timestamp\": \"2026-...\",\n  \"data\": { \"status\": \"completed\", \"type\": \"video\",\n            \"url\": \"...mp4\", \"thumbnailUrl\": \"...jpg\",\n            \"duration\": 10.25, \"size\": 909252,\n            \"creditsCharged\": 11, \"templateId\": null } }\n```\n`render.failed` sends `data: { status, type, error, creditsCharged: 0 }` (credits auto-refunded).\n\nThe payload carries **no job name**, so *Normalize event* recovers name + CSV row from the output filename (`offer-<slug>-r<row>-<epoch>.mp4`) - that is why the submit workflow bakes `-r<row>` into every job name. Failed events cannot be mapped to a row this way; they carry only the jobId."
+      }
+    },
+    {
+      "id": "n-webhook",
+      "name": "Zvid render event",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -180,
+        96
+      ],
+      "webhookId": "c3a9d8f1-52b7-4a06-9e14-8b7d5c2e0f14",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "zvid-render-events",
+        "responseMode": "onReceived",
+        "options": {}
+      }
+    },
+    {
+      "id": "n-normalize",
+      "name": "Normalize event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        40,
+        96
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Flatten the Zvid delivery into one tidy item per event and recover the\n// job name + CSV row from the output filename (offer-<slug>-r<row>-<epoch>.mp4).\n// The payload itself has no job name - see the sticky note.\nconst body = $json.body || {};\nconst data = body.data || {};\n\nlet name = null;\nlet csvRow = null;\nconst url = String(data.url || '');\nconst fileMatch = /\\/([^\\/?#]+)\\.[a-z0-9]+(?:[?#]|$)/i.exec(url);\nif (fileMatch) {\n  name = fileMatch[1].replace(/-\\d{10,}$/, '');\n  const rowMatch = /-r(\\d+)$/.exec(name);\n  if (rowMatch) csvRow = Number(rowMatch[1]);\n}\n\nreturn [{ json: {\n  event: body.event || '',\n  jobId: body.jobId || null,\n  receivedAt: body.timestamp || null,\n  name,\n  csv_row: csvRow,\n  status: data.status || '',\n  video_url: url,\n  thumbnail_url: data.thumbnailUrl || '',\n  duration: data.duration != null ? data.duration : null,\n  credits: data.creditsCharged != null ? data.creditsCharged : null,\n  error: data.error || '',\n} }];"
+      }
+    },
+    {
+      "id": "n-if-completed",
+      "name": "Completed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        260,
+        96
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "c-completed",
+              "leftValue": "={{ $json.event }}",
+              "rightValue": "render.completed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "n-action-done",
+      "name": "Deliver the video (replace me)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        500,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "n-action-failed",
+      "name": "Handle failed render (replace me)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        500,
+        192
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "note-actions",
+      "name": "Sticky Note - Actions",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        460,
+        320
+      ],
+      "parameters": {
+        "width": 560,
+        "height": 190,
+        "color": 5,
+        "content": "### Your actions go here\nEach completed event arrives with `name`, `csv_row`, `video_url`, `thumbnail_url`, `credits`. Typical swaps for the placeholder:\n- **Gmail / SMTP**: e-mail each customer their personalized video link.\n- **Google Sheets**: append a results row (the event-driven results.csv).\n- **Slack**: notify the campaign channel with the thumbnail.\n\nFailed events have only `jobId` + `error`; credits are refunded automatically - log them or alert."
+      }
+    }
+  ],
+  "connections": {
+    "Zvid render event": {
+      "main": [
+        [
+          {
+            "node": "Normalize event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize event": {
+      "main": [
+        [
+          {
+            "node": "Completed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Completed?": {
+      "main": [
+        [
+          {
+            "node": "Deliver the video (replace me)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle failed render (replace me)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

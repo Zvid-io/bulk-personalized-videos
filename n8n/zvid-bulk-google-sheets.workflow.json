@@ -1,6 +1,6 @@
 {
-  "id": "ZvidBulkPersonal",
-  "name": "Bulk personalized videos from CSV (Zvid)",
+  "id": "ZvidBulkSheets",
+  "name": "Bulk personalized videos from Google Sheets (Zvid)",
   "active": false,
   "settings": {
     "executionOrder": "v1"
@@ -19,7 +19,7 @@
       "parameters": {
         "width": 620,
         "height": 340,
-        "content": "## Bulk personalized videos from a CSV\nn8n port of [Zvid-io/bulk-personalized-videos](https://github.com/Zvid-io/bulk-personalized-videos): one designed template + one CSV row per customer = one branded 1080x1920 video each, via `POST /api/render/bulk/api-key`.\n\n**Setup**\n1. Create an API key at app.zvid.io -> API Keys.\n2. Create a **Header Auth** credential: name `x-api-key`, value = your key. Attach it to *Validate row (free)*, *Submit bulk render* and *Get batch status*.\n3. Tweak **Campaign Config**: point `csvUrl` / `templateUrl` / `campaignUrl` at your own files, set `rowLimit` (0 = all rows), or `dryRun: true` for a free per-row validation + credit estimate.\n\nAlso available: a Google Sheets variant and an event-driven webhook variant - see the `n8n/` folder of the repo. Prefer native nodes? The official [`@zvid/n8n-nodes-zvid`](https://www.npmjs.com/package/@zvid/n8n-nodes-zvid) package adds a Zvid node (bulk render, free validate, wait-for-completion) and an HMAC-verified Zvid Trigger."
+        "content": "## Bulk personalized videos from a Google Sheet\nGoogle Sheets flavour of the [Zvid-io/bulk-personalized-videos](https://github.com/Zvid-io/bulk-personalized-videos) workflow: one designed template + one sheet row per customer = one branded 1080x1920 video each, via `POST /api/render/bulk/api-key`.\n\n**Setup**\n1. Create an API key at app.zvid.io -> API Keys; put it in a **Header Auth** credential (name `x-api-key`) and attach it to the three API nodes.\n2. Attach your **Google Sheets** credential to *Read customer rows*.\n3. Your sheet needs a header row: `first_name, product_name, product_tagline, product_image, discount_label, coupon_code, cta_url` (copy [data/customers.csv](https://github.com/Zvid-io/bulk-personalized-videos/blob/master/data/customers.csv) to a sheet to try it).\n4. Point `sheetUrl` / `sheetTab` in **Campaign Config** at your spreadsheet - `sheetTab` must be the EXACT tab name shown in the bar at the bottom of the sheet; `dryRun: true` gives a free validation + credit estimate."
       }
     },
     {
@@ -76,7 +76,7 @@
       ],
       "parameters": {
         "mode": "raw",
-        "jsonOutput": "{\n  \"apiUrl\": \"https://api.zvid.io\",\n  \"templateUrl\": \"https://raw.githubusercontent.com/Zvid-io/bulk-personalized-videos/master/template.json\",\n  \"campaignUrl\": \"https://raw.githubusercontent.com/Zvid-io/bulk-personalized-videos/master/campaign.json\",\n  \"csvUrl\": \"https://raw.githubusercontent.com/Zvid-io/bulk-personalized-videos/master/data/customers.csv\",\n  \"batchName\": \"personalized-offers (n8n)\",\n  \"rowLimit\": 0,\n  \"dryRun\": false,\n  \"batchSize\": 100,\n  \"pollSeconds\": 10,\n  \"timeoutMinutes\": 30,\n  \"saveToDisk\": false,\n  \"outDir\": \"/home/node/.n8n-files/zvid-out\"\n}",
+        "jsonOutput": "{\n  \"apiUrl\": \"https://api.zvid.io\",\n  \"templateUrl\": \"https://raw.githubusercontent.com/Zvid-io/bulk-personalized-videos/master/template.json\",\n  \"campaignUrl\": \"https://raw.githubusercontent.com/Zvid-io/bulk-personalized-videos/master/campaign.json\",\n  \"sheetUrl\": \"https://docs.google.com/spreadsheets/d/YOUR_SPREADSHEET_ID/edit\",\n  \"sheetTab\": \"Sheet1\",\n  \"batchName\": \"personalized-offers (n8n sheets)\",\n  \"rowLimit\": 0,\n  \"dryRun\": false,\n  \"batchSize\": 100,\n  \"pollSeconds\": 10,\n  \"timeoutMinutes\": 30,\n  \"saveToDisk\": false,\n  \"outDir\": \"/home/node/.n8n-files/zvid-out\"\n}",
         "options": {}
       }
     },
@@ -121,40 +121,6 @@
       }
     },
     {
-      "id": "n-fetch-csv",
-      "name": "Fetch customers.csv",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        620,
-        96
-      ],
-      "parameters": {
-        "url": "={{ $('Campaign Config').first().json.csvUrl }}",
-        "options": {
-          "response": {
-            "response": {
-              "responseFormat": "file"
-            }
-          }
-        }
-      }
-    },
-    {
-      "id": "n-parse-csv",
-      "name": "Parse CSV rows",
-      "type": "n8n-nodes-base.extractFromFile",
-      "typeVersion": 1,
-      "position": [
-        820,
-        96
-      ],
-      "parameters": {
-        "operation": "csv",
-        "options": {}
-      }
-    },
-    {
       "id": "n-build-items",
       "name": "Build bulk items",
       "type": "n8n-nodes-base.code",
@@ -165,7 +131,7 @@
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "// Mirrors src/csv.js of the CLI example: required-column checks,\n// per-row validation, slugified job names, optional row limit.\nconst REQUIRED = ['first_name','product_name','product_tagline','product_image','discount_label','coupon_code','cta_url'];\nconst cfg = $('Campaign Config').first().json;\nconst rows = $input.all().map((i) => i.json);\nif (rows.length === 0) throw new Error('CSV contains no data rows');\n\nconst missing = REQUIRED.filter((c) => !(c in rows[0]));\nif (missing.length) {\n  throw new Error(`CSV is missing required column(s): ${missing.join(', ')}. Expected header: ${REQUIRED.join(',')}`);\n}\n\nconst slugify = (v) => String(v).toLowerCase().normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'row';\n// note: the Code sandbox has no URL global - keep this a regex\nconst isHttpUrl = (v) => /^https?:\\/\\//i.test(String(v).trim());\n\nconst items = [];\nconst rowErrors = [];\nrows.forEach((record, index) => {\n  const row = index + 1; // 1-based CSV data row (header excluded)\n  const problems = [];\n  for (const c of REQUIRED) if (!record[c]) problems.push(`\"${c}\" is empty`);\n  if (record.product_image && !isHttpUrl(record.product_image)) problems.push('\"product_image\" must be an http(s) URL');\n  if (problems.length) { rowErrors.push({ row, error: problems.join('; ') }); return; }\n  items.push({\n    row,\n    name: `offer-${slugify(record.first_name)}-r${row}`,\n    variables: {\n      firstName: record.first_name,\n      productName: record.product_name,\n      productMeta: record.product_tagline,\n      productImage: record.product_image,\n      discountLabel: record.discount_label,\n      couponCode: record.coupon_code,\n      ctaUrl: record.cta_url,\n    },\n  });\n});\n\nif (items.length === 0) throw new Error('No valid rows in the CSV - nothing to render. Reasons: ' + JSON.stringify(rowErrors.slice(0, 5)));\nconst limit = Number(cfg.rowLimit) || 0;\nconst limited = limit > 0 ? items.slice(0, limit) : items;\n// rowErrors ride on the first item so the manifest can report skipped rows\nreturn limited.map((it, i) => ({ json: i === 0 ? { ...it, rowErrors } : it }));"
+        "jsCode": "// Mirrors src/csv.js of the CLI example, fed from Google Sheets: the sheet\n// needs a header row with the same column names as data/customers.csv.\n// The Sheets node adds row_number (real sheet row) - we use it so the\n// manifest matches what you see in the spreadsheet.\nconst REQUIRED = ['first_name','product_name','product_tagline','product_image','discount_label','coupon_code','cta_url'];\nconst cfg = $('Campaign Config').first().json;\nconst rows = $input.all().map((i) => i.json);\nif (rows.length === 0) throw new Error('The sheet contains no data rows');\n\nconst missing = REQUIRED.filter((c) => !(c in rows[0]));\nif (missing.length) {\n  throw new Error(`The sheet is missing required column(s): ${missing.join(', ')}. Expected header row: ${REQUIRED.join(', ')}`);\n}\n\nconst slugify = (v) => String(v).toLowerCase().normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'row';\n// note: the Code sandbox has no URL global - keep this a regex\nconst isHttpUrl = (v) => /^https?:\\/\\//i.test(String(v).trim());\n\nconst items = [];\nconst rowErrors = [];\nrows.forEach((record, index) => {\n  const row = record.row_number ? record.row_number - 1 : index + 1; // 1-based data row (header excluded)\n  const problems = [];\n  for (const c of REQUIRED) if (!record[c]) problems.push(`\"${c}\" is empty`);\n  if (record.product_image && !isHttpUrl(record.product_image)) problems.push('\"product_image\" must be an http(s) URL');\n  if (problems.length) { rowErrors.push({ row, error: problems.join('; ') }); return; }\n  items.push({\n    row,\n    name: `offer-${slugify(record.first_name)}-r${row}`,\n    variables: {\n      firstName: record.first_name,\n      productName: record.product_name,\n      productMeta: record.product_tagline,\n      productImage: record.product_image,\n      discountLabel: record.discount_label,\n      couponCode: record.coupon_code,\n      ctaUrl: record.cta_url,\n    },\n  });\n});\n\nif (items.length === 0) throw new Error('No valid rows in the sheet - nothing to render. Reasons: ' + JSON.stringify(rowErrors.slice(0, 5)));\nconst limit = Number(cfg.rowLimit) || 0;\nconst limited = limit > 0 ? items.slice(0, limit) : items;\n// rowErrors ride on the first item so the manifest can report skipped rows\nreturn limited.map((it, i) => ({ json: i === 0 ? { ...it, rowErrors } : it }));"
       }
     },
     {
@@ -324,7 +290,7 @@
         1900,
         192
       ],
-      "webhookId": "7d9f2b6e-3c41-4e8a-9f5b-2f8c1d0a6b3e",
+      "webhookId": "9f1c4d7a-8e25-4b39-a6c0-3d5e8f2b1a70",
       "parameters": {
         "amount": "={{ $('Campaign Config').first().json.pollSeconds }}"
       }
@@ -584,6 +550,31 @@
         "dataPropertyName": "data",
         "options": {}
       }
+    },
+    {
+      "id": "n-read-sheet",
+      "name": "Read customer rows",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        620,
+        96
+      ],
+      "parameters": {
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Campaign Config').first().json.sheetUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ $('Campaign Config').first().json.sheetTab }}"
+        },
+        "options": {}
+      }
     }
   ],
   "connections": {
@@ -624,29 +615,7 @@
       "main": [
         [
           {
-            "node": "Fetch customers.csv",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Fetch customers.csv": {
-      "main": [
-        [
-          {
-            "node": "Parse CSV rows",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Parse CSV rows": {
-      "main": [
-        [
-          {
-            "node": "Build bulk items",
+            "node": "Read customer rows",
             "type": "main",
             "index": 0
           }
@@ -866,6 +835,17 @@
         [
           {
             "node": "Save MP4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read customer rows": {
+      "main": [
+        [
+          {
+            "node": "Build bulk items",
             "type": "main",
             "index": 0
           }

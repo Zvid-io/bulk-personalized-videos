@@ -26,7 +26,7 @@ cp .env.example .env        # put your API key in .env (app.zvid.io → API Keys
 
 npm run dry-run             # validate every row + credit estimate — free
 npm run sample              # render the first 2 rows only
-npm start                   # render all 8 sample rows
+npm start                   # render all 4 sample rows
 ```
 
 Requires Node.js ≥ 20. A successful run downloads the MP4s into `out/` and
@@ -34,13 +34,24 @@ writes `out/results.csv` — a manifest mapping every CSV row to its video URL,
 thumbnail, credits spent, and any error.
 
 ```
-Personalized video campaign — 8 video(s) from customers.csv
-  Batch 1: blk_rkrJEvDXoCUszBZhpiKu — 8 job(s) queued, 88 credits reserved
-  8 done · 0 failed · 0 rendering — 41s
-Downloading 8 video(s) to out/ ...
+Personalized video campaign — 4 video(s) from customers.csv
+  Batch 1: blk_rkrJEvDXoCUszBZhpiKu — 4 job(s) queued, 44 credits reserved
+  4 done · 0 failed · 0 rendering — 41s
+Downloading 4 video(s) to out/ ...
 
-Done. 8 rendered — 88 credits reserved. Manifest: out/results.csv
+Done. 4 rendered — 44 credits reserved. Manifest: out/results.csv
 ```
+
+## No-code: n8n
+
+The [`n8n/`](n8n) folder has ready-to-import n8n workflows that do everything
+this CLI does — CSV **and** Google Sheets sources, polling **and**
+webhook-driven variants, with the same free dry-run, batching and retries —
+built from n8n core nodes only, so they run on self-hosted n8n and n8n Cloud
+alike. For native Zvid nodes (bulk render, validate, render-finished trigger),
+install the official
+[`@zvid/n8n-nodes-zvid`](https://www.npmjs.com/package/@zvid/n8n-nodes-zvid)
+community package. Full instructions: [n8n/README.md](n8n/README.md).
 
 ## How it works
 
@@ -90,6 +101,7 @@ x-api-key: YOUR_API_KEY
 | [`src/csv.js`](src/csv.js) | **The file you edit** — maps your columns to template variables. |
 | [`src/zvid.js`](src/zvid.js) | Minimal API client (fetch + retries with backoff, typed errors). |
 | [`src/util.js`](src/util.js) | .env loader, concurrency helper, streaming downloads. |
+| [`n8n/`](n8n) | Ready-to-import n8n workflows: CSV / Google Sheets / webhook variants. |
 
 ## CSV schema
 
