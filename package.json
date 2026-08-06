@@ -44,6 +44,7 @@
     "sample": "node src/index.js --limit 2"
   },
   "dependencies": {
-    "csv-parse": "^6.0.0"
+    "csv-parse": "^6.0.0",
+    "@zvid/sdk": "^0.2.0"
   }
 }

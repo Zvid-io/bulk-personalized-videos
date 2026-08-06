@@ -22,7 +22,7 @@ video for each.
 
 ```bash
 npm install
-cp .env.example .env        # put your API key in .env (app.zvid.io → API Keys)
+cp .env.example .env        # add a key from https://app.zvid.io/api-keys
 
 npm run dry-run             # validate every row + credit estimate — free
 npm run sample              # render the first 2 rows only
@@ -81,10 +81,10 @@ x-api-key: YOUR_API_KEY
 - **`items`** is your spreadsheet: each entry's `variables` merge over the
   batch-level `variables`, which merge over the template defaults.
 - Validation is **best-effort per item**: valid rows queue immediately, broken
-  rows come back in the response's `itemErrors` array with field-level messages —
+  rows come back in the response's `errors` array with field-level messages —
   one bad row never sinks the batch.
 - The `202` response returns a `bulkId`; poll `GET /api/render/bulk/{bulkId}`
-  until every job is terminal, or set `ZVID_WEBHOOK_URL` to get a signed
+  until every job is terminal, or set `ZVID_WEBHOOK_URL` to get a
   webhook per finished job instead.
 - Credits are reserved per job and **automatically refunded for failed jobs**.
 - Up to 500 items per request (plan limits may be lower); the script batches
@@ -96,10 +96,10 @@ x-api-key: YOUR_API_KEY
 | --- | --- |
 | [`template.json`](template.json) | The designed video — 3 scenes, animations, transitions, music. Edit visuals here. |
 | [`campaign.json`](campaign.json) | Batch-level variables: brand name, accent color, headline, music. |
-| [`data/customers.csv`](data/customers.csv) | One row per video. Sample photos from Pexels & Unsplash. |
+| [`data/customers.csv`](data/customers.csv) | One row per video. Sample media from Zvid's stock library. |
 | [`src/index.js`](src/index.js) | CLI: load → validate → submit → poll → download → manifest. |
 | [`src/csv.js`](src/csv.js) | **The file you edit** — maps your columns to template variables. |
-| [`src/zvid.js`](src/zvid.js) | Minimal API client (fetch + retries with backoff, typed errors). |
+| [`package.json`](package.json) | Installs `@zvid/sdk`, the official API client with retries and typed errors. |
 | [`src/util.js`](src/util.js) | .env loader, concurrency helper, streaming downloads. |
 | [`n8n/`](n8n) | Ready-to-import n8n workflows: CSV / Google Sheets / webhook variants. |
 
@@ -153,14 +153,4 @@ match your columns.
 - **Exit codes**: `0` all rendered, `1` fatal (config/auth/credits), `2`
   partial (some rows failed or timed out) — CI-friendly.
 
-## Sample asset credits
-
-Product photos by [Adrian Regeci](https://www.pexels.com/photo/a-black-wrist-watch-beside-a-magazine-11403924/),
-[Minh Tri](https://www.pexels.com/photo/a-close-up-shot-of-a-pair-of-sneakers-9207813/),
-[Philipp Aleev](https://www.pexels.com/photo/brown-backpack-hanging-from-the-tree-trunk-9088788/),
-[Rendy Ramdani](https://www.pexels.com/photo/close-up-photo-of-beauty-products-on-glass-bottles-12146904/) and
-[Pavel Danilyuk](https://www.pexels.com/photo/a-woman-in-brown-knitted-sweater-holding-a-basket-5789010/) on Pexels;
-[Luke Peterson](https://unsplash.com/photos/black-wireless-headphones-on-white-table-lUMj2Zv5HUE),
-[Kiran CK](https://unsplash.com/photos/black-framed-sunglasses-on-white-surface-lSl94SZHRgA) and
-[Beau Carpenter](https://unsplash.com/photos/a-coffee-maker-pouring-coffee-into-a-cup-KGR2u2rG6c4) on Unsplash.
-Music from [Pixabay](https://pixabay.com/music/).
+The checked-in sample media comes from Zvid's stock library.

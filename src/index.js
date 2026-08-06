@@ -23,7 +23,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import path from 'node:path';
 
-import { ZvidClient, ZvidApiError } from './zvid.js';
+import { InsufficientCreditsError, ZvidAPIError, ZvidClient } from '@zvid/sdk';
 import { loadItems } from './csv.js';
 import { loadEnv, color, downloadFile, withConcurrency, csvField } from './util.js';
 
@@ -99,7 +99,7 @@ async function main() {
     const batch = items.slice(start, start + batchSize);
     let response;
     try {
-      response = await client.submitBulk({
+      response = await client.renders.createBulk({
         payload,
         variables: campaignVariables,
         items: batch.map(({ variables, name }) => ({ variables, name })),
@@ -107,7 +107,7 @@ async function main() {
         webhookUrl,
       });
     } catch (error) {
-      if (error instanceof ZvidApiError && error.status === 402) {
+      if (error instanceof InsufficientCreditsError) {
         console.error(
           color.red(`✖ Insufficient credits: ${error.body?.message || ''}`)
         );
@@ -131,7 +131,7 @@ async function main() {
     );
 
     // Items the API rejected during per-item validation (the rest still run).
-    for (const itemError of response.itemErrors ?? []) {
+    for (const itemError of response.errors ?? []) {
       const index = itemError.item ?? itemError.index;
       const item = typeof index === 'number' ? batch[index] : undefined;
       const where = item ? `CSV row ${item.row}` : `item ${index}`;
@@ -154,7 +154,7 @@ async function main() {
   let batches;
 
   for (;;) {
-    batches = await Promise.all(bulkIds.map((id) => client.getBulk(id)));
+    batches = await Promise.all(bulkIds.map((id) => client.renders.getBulk(id)));
     const counts = { completed: 0, failed: 0, pending: 0 };
     for (const { bulk } of batches) {
       counts.completed += bulk.counts.completed;
@@ -252,7 +252,7 @@ async function dryRun(client, payload, campaignVariables, items) {
   console.log(color.bold('Dry run — validating every row (no credits spent):'));
 
   const tasks = items.map((item) => () =>
-    client.validateRender({
+    client.authoring.validate({
       payload,
       variables: { ...campaignVariables, ...item.variables },
     })
@@ -270,6 +270,16 @@ async function dryRun(client, payload, campaignVariables, items) {
         .join('; ');
       console.error(
         color.red(`  ✖ CSV row ${item.row} (${item.name}): ${details || result.error.message}`)
+      );
+      return;
+    }
+    if (!result.value.valid) {
+      invalid += 1;
+      const details = result.value.errors
+        ?.map((detail) => `${detail.field}: ${detail.message}`)
+        .join('; ');
+      console.error(
+        color.red(`  ✖ CSV row ${item.row} (${item.name}): ${details || result.value.message}`)
       );
       return;
     }
@@ -319,7 +329,7 @@ Options:
   --timeout <min>         give up polling after n minutes  (default: 30)
 
 Environment:
-  ZVID_API_KEY       required — create one at https://app.zvid.io (API Keys)
+  ZVID_API_KEY       required — create one at https://app.zvid.io/api-keys
   ZVID_API_URL       optional API origin override
   ZVID_WEBHOOK_URL   optional — get a webhook per finished job instead of polling`);
 }
@@ -333,7 +343,7 @@ main()
   })
   .catch((error) => {
     console.error(color.red(`✖ ${error.message}`));
-    if (error instanceof ZvidApiError && error.body?.details) {
+    if (error instanceof ZvidAPIError && error.body?.details) {
       for (const detail of error.body.details) {
         console.error(color.red(`    ${detail.field}: ${detail.message}`));
       }
