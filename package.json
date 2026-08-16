@@ -41,7 +41,10 @@
   "scripts": {
     "start": "node src/index.js",
     "dry-run": "node src/index.js --dry-run",
-    "sample": "node src/index.js --limit 2"
+    "sample": "node src/index.js --limit 2",
+    "make:local": "node make/generate-local-blueprints.mjs",
+    "make:validate": "node make/validate-blueprints.mjs",
+    "test": "node make/validate-blueprints.mjs"
   },
   "dependencies": {
     "csv-parse": "^6.0.0",

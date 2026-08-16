@@ -53,6 +53,16 @@ install the official
 [`@zvid/n8n-nodes-zvid`](https://www.npmjs.com/package/@zvid/n8n-nodes-zvid)
 community package. Full instructions: [n8n/README.md](n8n/README.md).
 
+## No-code: Make
+
+The [`make/`](make) folder contains ready-to-import Make blueprints using the
+native Zvid app: a free validation workflow and the complete paid bulk-render
+workflow. The paid scenario queues all four sample rows, checks batch progress,
+and emits one final bundle per job with its output URL, thumbnail, credits, and
+error details. Follow [make/README.md](make/README.md) to generate a blueprint
+for a private app during development or import the public-app blueprint after
+the Zvid app is published.
+
 ## How it works
 
 One HTTP request fans out into N render jobs:

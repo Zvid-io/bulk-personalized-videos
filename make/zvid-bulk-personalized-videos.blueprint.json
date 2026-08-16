@@ -1,0 +1,139 @@
+{
+    "name": "Zvid - Bulk personalized videos",
+    "flow": [
+        {
+            "id": 1,
+            "module": "http:ActionSendData",
+            "version": 3,
+            "parameters": {
+                "handleErrors": false
+            },
+            "mapper": {
+                "url": "https://raw.githubusercontent.com/Zvid-io/bulk-personalized-videos/master/template.json",
+                "method": "get",
+                "headers": [],
+                "qs": [],
+                "parseResponse": true,
+                "authUser": "",
+                "authPass": "",
+                "shareCookies": false,
+                "rejectUnauthorized": true,
+                "followRedirect": true,
+                "followAllRedirects": false,
+                "useQuerystring": false,
+                "serializeUrl": false,
+                "gzip": true,
+                "useMtls": false
+            },
+            "metadata": {
+                "designer": {
+                    "x": 0,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "id": 2,
+            "module": "zvid:createBulkRender",
+            "version": 1,
+            "parameters": {
+                "__IMTCONN__": 0
+            },
+            "mapper": {
+                "renderType": "video",
+                "source": "json",
+                "projectJson": "{{1.data}}",
+                "variables": "{\"brandName\":\"ARCADIA\",\"accentColor\":\"#C6FF3D\",\"headline\":\"We picked this<br>just for you.\",\"subheadline\":\"A private offer from this season's collection.\",\"showOffer\":true,\"offerKicker\":\"YOUR PERSONAL OFFER\",\"ctaHeadline\":\"Your code is ready.\"}",
+                "items": "[{\"name\":\"offer-amira-r1\",\"variables\":{\"firstName\":\"Amira\",\"productName\":\"The Field Watch\",\"productMeta\":\"Sapphire glass · Italian leather\",\"productImage\":\"https://cdn.zvid.io/library/examples/previews/ecom-hero-promo.3d7866ef63d0.jpg\",\"discountLabel\":\"20% OFF\",\"couponCode\":\"AMIRA-20\",\"ctaUrl\":\"arcadia.example/amira\"}},{\"name\":\"offer-omar-r2\",\"variables\":{\"firstName\":\"Omar\",\"productName\":\"The Court Sneaker\",\"productMeta\":\"Cushioned, court-ready, all day\",\"productImage\":\"https://cdn.zvid.io/library/examples/previews/ecom-new-arrival.a79a66824b99.jpg\",\"discountLabel\":\"25% OFF\",\"couponCode\":\"OMAR-25\",\"ctaUrl\":\"arcadia.example/omar\"}},{\"name\":\"offer-lina-r3\",\"variables\":{\"firstName\":\"Lina\",\"productName\":\"The Studio Headphones\",\"productMeta\":\"40h battery · active noise cancelling\",\"productImage\":\"https://cdn.zvid.io/library/examples/previews/ecom-best-seller.4ccfa95fa204.jpg\",\"discountLabel\":\"30% OFF\",\"couponCode\":\"LINA-30\",\"ctaUrl\":\"arcadia.example/lina\"}},{\"name\":\"offer-noah-r4\",\"variables\":{\"firstName\":\"Noah\",\"productName\":\"The Canvas Backpack\",\"productMeta\":\"Waxed canvas · 25L · weatherproof\",\"productImage\":\"https://cdn.zvid.io/library/examples/previews/ecom-back-in-stock.6b1b0792c2d6.jpg\",\"discountLabel\":\"20% OFF\",\"couponCode\":\"NOAH-20\",\"ctaUrl\":\"arcadia.example/noah\"}}]",
+                "batchName": "personalized-offers (Make)"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 300,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "id": 3,
+            "module": "util:FunctionSleep",
+            "version": 1,
+            "parameters": {},
+            "mapper": {
+                "duration": "45"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 600,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "id": 4,
+            "module": "zvid:getBulkRender",
+            "version": 1,
+            "parameters": {
+                "__IMTCONN__": 0
+            },
+            "mapper": {
+                "bulkId": "{{2.bulkId}}"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 900,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "id": 5,
+            "module": "util:FunctionSleep",
+            "version": 1,
+            "parameters": {},
+            "mapper": {
+                "duration": "45"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 1200,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "id": 6,
+            "module": "zvid:getBulkRender",
+            "version": 1,
+            "parameters": {
+                "__IMTCONN__": 0
+            },
+            "mapper": {
+                "bulkId": "{{2.bulkId}}"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 1500,
+                    "y": 0
+                }
+            }
+        }
+    ],
+    "metadata": {
+        "version": 1,
+        "scenario": {
+            "roundtrips": 1,
+            "maxErrors": 3,
+            "autoCommit": true,
+            "autoCommitTriggerLast": true,
+            "sequential": true,
+            "confidential": false,
+            "dataloss": false,
+            "dlq": false,
+            "freshVariables": false
+        },
+        "designer": {
+            "orphans": []
+        }
+    }
+}
