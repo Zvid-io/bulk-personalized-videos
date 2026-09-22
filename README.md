@@ -164,3 +164,9 @@ match your columns.
   partial (some rows failed or timed out) — CI-friendly.
 
 The checked-in sample media comes from Zvid's stock library.
+
+## Community and support
+
+Join the [Zvid community on Discord](https://discord.gg/MZyWKqHDj3) to ask
+questions, discuss video automation workflows, and share what you build.
+For private account or billing questions, email [help@zvid.io](mailto:help@zvid.io).
