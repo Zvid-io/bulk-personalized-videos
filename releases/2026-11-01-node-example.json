@@ -1,0 +1,17 @@
+{
+  "date": "2026-11-01",
+  "sourceCommit": "a8bed1d0599fa94796f8ab065b16e7385d57d4bf",
+  "sourceUrl": "https://github.com/Zvid-io/bulk-personalized-videos/tree/a8bed1d0599fa94796f8ab065b16e7385d57d4bf",
+  "zipUrl": "https://cdn.zvid.io/blog/ecommerce-product-video-api/d652254a8970/bulk-personalized-videos.zip",
+  "zipSha256": "d652254a8970e06c093824161ed4ebf262d92537b252f4a9b01c7d7f0753c9e1",
+  "zipBytes": 20806,
+  "archiveRoot": "bulk-personalized-videos",
+  "scope": "Node.js example, inputs, tests, dependency files and license; integrations are linked separately",
+  "checks": [
+    "npm ci and npm test from extracted ZIP",
+    "Two completed renders, 11 credits each",
+    "Resume completed jobs without new submissions",
+    "Storage and CDN archive checksum matched"
+  ],
+  "ci": "https://github.com/Zvid-io/bulk-personalized-videos/actions/runs/41301620248"
+}
