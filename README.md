@@ -1,172 +1,157 @@
-# Bulk personalized videos from a CSV
+# Personalized ecommerce videos with Node.js
 
-Turn a spreadsheet into **one branded video per row** with a single API call.
-This example renders a personalized offer video for every customer in
-[`data/customers.csv`](data/customers.csv) — their name, their product, their
-photo, their coupon code — from one designed template, using Zvid's
-[bulk render endpoint](https://docs.zvid.io/automation/bulk-rendering).
+Create one vertical offer video per CSV row with Zvid's product video API. The
+sample uses one three-scene JSON design and a fictional ARCADIA campaign:
+Amira receives a watch offer with `AMIRA-20`; Omar receives a sneaker offer with
+`OMAR-25`. Names, discounts and offer URLs are illustrative. Replace them with
+approved customer and product information before real use.
 
-Each 1080×1920 video greets the customer by name, showcases their product with
-a Ken Burns zoom and discount badge, then reveals their personal coupon code:
-
-| Scene 1 — greeting | Scene 2 — product | Scene 3 — coupon |
-| --- | --- | --- |
-| "HEY, AMIRA" + headline + 20% OFF chip | product photo, discount badge, name & tagline | "Your code is ready." + `AMIRA-20` |
-
-The same pattern powers e-commerce win-back campaigns, real-estate listing
-videos (one per property), sales outreach (one per prospect), HR onboarding
-(one per hire) — anywhere you have a table of people or things and want a
-video for each.
+Article: [Product Video API: Personalized Offers with Node.js](https://zvid.io/blog/developer-tutorials/ecommerce-product-video-template-json).
 
 ## Quick start
 
+Install Node.js 20 or newer. Get an API key at https://app.zvid.io/api-keys and
+have enough Zvid credits for the estimate. Keep the key on your server.
+
+From the extracted `bulk-personalized-videos` directory:
+
 ```bash
-npm install
-cp .env.example .env        # add a key from https://app.zvid.io/api-keys
-
-npm run dry-run             # validate every row + credit estimate — free
-npm run sample              # render the first 2 rows only
-npm start                   # render all 4 sample rows
+npm ci
+npm test
 ```
 
-Requires Node.js ≥ 20. A successful run downloads the MP4s into `out/` and
-writes `out/results.csv` — a manifest mapping every CSV row to its video URL,
-thumbnail, credits spent, and any error.
+Copy `.env.example` to `.env` using your file manager, then set:
 
-```
-Personalized video campaign — 4 video(s) from customers.csv
-  Batch 1: blk_rkrJEvDXoCUszBZhpiKu — 4 job(s) queued, 44 credits reserved
-  4 done · 0 failed · 0 rendering — 41s
-Downloading 4 video(s) to out/ ...
-
-Done. 4 rendered — 44 credits reserved. Manifest: out/results.csv
+```dotenv
+ZVID_API_KEY=zvid_your_key_here
 ```
 
-## No-code: n8n
+Leave the optional API origin and webhook settings unset for the first run.
+Validate only the first two rows:
 
-The [`n8n/`](n8n) folder has ready-to-import n8n workflows that do everything
-this CLI does — CSV **and** Google Sheets sources, polling **and**
-webhook-driven variants, with the same free dry-run, batching and retries —
-built from n8n core nodes only, so they run on self-hosted n8n and n8n Cloud
-alike. For native Zvid nodes (bulk render, validate, render-finished trigger),
-install the official
-[`@zvid/n8n-nodes-zvid`](https://www.npmjs.com/package/@zvid/n8n-nodes-zvid)
-community package. Full instructions: [n8n/README.md](n8n/README.md).
-
-## No-code: Make
-
-The [`make/`](make) folder contains ready-to-import Make blueprints using the
-native Zvid app: a free validation workflow and the complete paid bulk-render
-workflow. The paid scenario queues all four sample rows, checks batch progress,
-and emits one final bundle per job with its output URL, thumbnail, credits, and
-error details. Follow [make/README.md](make/README.md) to generate a blueprint
-for a private app during development or import the public-app blueprint after
-the Zvid app is published.
-
-## How it works
-
-One HTTP request fans out into N render jobs:
-
-```jsonc
-POST https://api.zvid.io/api/render/bulk/api-key
-x-api-key: YOUR_API_KEY
-
-{
-  "payload":   { /* template.json — full project with {{placeholders}} */ },
-  "variables": { /* campaign.json — batch-level values, e.g. brand color */ },
-  "items": [
-    { "variables": { "firstName": "Amira", "couponCode": "AMIRA-20", ... },
-      "name": "offer-amira-r1" },
-    { "variables": { "firstName": "Omar",  "couponCode": "OMAR-25",  ... },
-      "name": "offer-omar-r2" }
-  ],
-  "name": "personalized-offers 2026-07-19"
-}
+```bash
+node src/index.js --dry-run --limit 2 --out out/sample --max-credits 22
 ```
 
-- **`payload`** is the designed video ([`template.json`](template.json)) with
-  `{{variable}}` placeholders in its text, colors, and image URLs, plus a
-  `variables` block declaring defaults. You can pass a stored `"template":
-  "tpl_…"` id instead — same request otherwise.
-- **`items`** is your spreadsheet: each entry's `variables` merge over the
-  batch-level `variables`, which merge over the template defaults.
-- Validation is **best-effort per item**: valid rows queue immediately, broken
-  rows come back in the response's `errors` array with field-level messages —
-  one bad row never sinks the batch.
-- The `202` response returns a `bulkId`; poll `GET /api/render/bulk/{bulkId}`
-  until every job is terminal, or set `ZVID_WEBHOOK_URL` to get a
-  webhook per finished job instead.
-- Credits are reserved per job and **automatically refunded for failed jobs**.
-- Up to 500 items per request (plan limits may be lower); the script batches
-  larger CSVs automatically (`--batch-size`).
+Validation does not consume render credits. Read `out/sample/validation.json`,
+including warnings. The supplied pair estimates at 11 credits each, 22 total.
+The estimate can change with your inputs, design or current service pricing.
+A passing validation does not prove that remote media will load or that a
+longer product name will fit; inspect a small rendered sample before scaling.
 
-## Project layout
+After reviewing the estimate, render and download the pair:
 
-| File | Purpose |
+```bash
+node src/index.js --limit 2 --out out/sample --max-credits 22
+```
+
+This command validates again and spends render credits. `--max-credits` checks
+the validation estimate, not a server-enforced spending limit. The CLI saves
+accepted batch/job IDs in `out/sample/run.json`, polls until completion, downloads
+`offer-amira-r1.mp4` and `offer-omar-r2.mp4`, and writes `results.csv`.
+The output is 1080 by 1920 at 30 fps, approximately 10.25 seconds per video.
+
+## Recover an interrupted run
+
+```bash
+node src/index.js --resume --out out/sample
+```
+
+Resume only polls and downloads saved jobs. It never submits another render.
+It retries missing or failed downloads and leaves existing successful local
+files in place. Do not run two processes against the same output directory.
+
+If a submission response is lost before the server's batch ID is saved, the
+journal records `submission_unknown`. Check the batch in https://app.zvid.io
+before deciding whether to submit again. Resume cannot discover a missing ID
+or queue rows that were never submitted. Do not delete the journal to bypass
+this check. Keep a new CSV containing only confirmed unsubmitted/rejected rows,
+fix their data, then use a new output directory for an intentional new run.
+
+Failed renders are recorded without automatic resubmission. A download failure
+is separate from a render failure; `results.csv` records its error and resume
+can download the completed job without rendering again. Download media promptly
+and copy published assets to storage you control: render-output URLs expire.
+
+## Files and variable mapping
+
+| File | Responsibility |
 | --- | --- |
-| [`template.json`](template.json) | The designed video — 3 scenes, animations, transitions, music. Edit visuals here. |
-| [`campaign.json`](campaign.json) | Batch-level variables: brand name, accent color, headline, music. |
-| [`data/customers.csv`](data/customers.csv) | One row per video. Sample media from Zvid's stock library. |
-| [`src/index.js`](src/index.js) | CLI: load → validate → submit → poll → download → manifest. |
-| [`src/csv.js`](src/csv.js) | **The file you edit** — maps your columns to template variables. |
-| [`package.json`](package.json) | Installs `@zvid/sdk`, the official API client with retries and typed errors. |
-| [`src/util.js`](src/util.js) | .env loader, concurrency helper, streaming downloads. |
-| [`n8n/`](n8n) | Ready-to-import n8n workflows: CSV / Google Sheets / webhook variants. |
+| `template.json` | Three scenes, typography, transitions, photo placement and variable defaults |
+| `campaign.json` | Shared brand, headline, accent color and music |
+| `data/customers.csv` | Four fictional recipients; the walkthrough selects the first two |
+| `src/csv.js` | Required columns and `rowToVariables()` |
+| `src/index.js` | Command-line options and authentication |
+| `src/run.js` | Validation, saved batch state, polling and manifest |
+| `src/util.js` | Environment loading and atomic downloads |
+| `tests/run.test.js` | Offline failure, recovery, cost-cap and CSV checks |
 
-## CSV schema
-
-| Column | Template variable | Example |
+| CSV column | Template variable | First row |
 | --- | --- | --- |
-| `first_name` | `firstName` | `Amira` |
-| `product_name` | `productName` | `The Field Watch` |
-| `product_tagline` | `productMeta` | `Sapphire glass · Italian leather` |
-| `product_image` | `productImage` | any public http(s) image, ideally ≥ 1080×1920 |
-| `discount_label` | `discountLabel` | `20% OFF` |
-| `coupon_code` | `couponCode` | `AMIRA-20` |
-| `cta_url` | `ctaUrl` | `arcadia.example/amira` |
+| `first_name` | `firstName` | Amira |
+| `product_name` | `productName` | The Field Watch |
+| `product_tagline` | `productMeta` | Black dial · Mesh strap |
+| `product_image` | `productImage` | Public Zvid CDN photo URL |
+| `discount_label` | `discountLabel` | 20% OFF |
+| `coupon_code` | `couponCode` | AMIRA-20 |
+| `cta_url` | `ctaUrl` | arcadia.example/amira |
 
-To use your own spreadsheet, export it as CSV with these headers — or change
-`REQUIRED_COLUMNS` and `rowToVariables()` in [`src/csv.js`](src/csv.js) to
-match your columns.
+Keep the case-sensitive headers. Selected rows with missing fields or invalid
+image URL schemes stop before submission. The example requires every listed
+field; this is an application choice. Change `REQUIRED_COLUMNS` and
+`rowToVariables()` together to support a different schema.
 
-## Adapting the template
+CSV values are substituted into designed text and URLs. Use approved inputs,
+keep text lengths close to the samples and avoid markup in imported text.
+The script does not create coupons, verify product specifications, choose
+recipients, send messages, upload to a storefront or publish ads.
+`ctaUrl` is visible text inside the MP4, not a clickable link. Put the actual
+shop URL in the surrounding email, landing page or platform link field.
 
-- **Brand it**: change `brandName`, `accentColor`, `headline`, and `musicUrl`
-  in [`campaign.json`](campaign.json) — the accent color flows through every
-  band, chip, and highlight automatically.
-- **Keep copy lengths similar** to the defaults (±30%) so the designed type
-  scale and layout keep looking right; don't shrink font sizes to squeeze in
-  longer text.
-- **Swap the design**: any project JSON with `{{placeholders}}` works as
-  `template.json`. Build one visually in the [Zvid editor](https://app.zvid.io),
-  or start from a library example. `condition` (e.g. `showOffer`) and
-  `iterate` are supported too.
-- **Different output**: change `resolution` (`full-hd`, `instagram-post`, …)
-  or add an `overrides` object to the submit call.
+## API flow
 
-## Production notes
+The CLI uses the official `@zvid/sdk` client. It authenticates with the API key
+and sends the JSON project in `payload`, shared variables in `variables`, and
+per-row values in `items[].variables` to the [bulk render endpoint](https://docs.zvid.io/docs/automation/bulk-rendering/).
+Per-row values override shared values, which override the design defaults.
 
-- **Dry-run first**: `npm run dry-run` runs every row through
-  `POST /api/render/validate/api-key` — free, returns field-level errors and
-  the exact credit cost before you commit a large batch.
-- **Polling vs webhooks**: polling is simplest and what this script does; for
-  big batches or serverless callers, set `ZVID_WEBHOOK_URL` and receive
-  `render.completed` / `render.failed` events per job (HMAC-signed — see
-  [webhook docs](https://docs.zvid.io/automation/webhooks)).
-- **Retries**: the client retries 429/5xx/network errors with exponential
-  backoff and honors `Retry-After`. Failed *renders* are not auto-retried by
-  the script — they're listed in `results.csv` with their error; fix the rows
-  and re-run just those.
-- **Rate limits & queueing**: bulk items count against your plan's render
-  rate limits, and bulk jobs yield slightly to interactive renders — large
-  batches are throughput-friendly by design.
-- **Exit codes**: `0` all rendered, `1` fatal (config/auth/credits), `2`
-  partial (some rows failed or timed out) — CI-friendly.
+Each accepted item becomes a separate job. An API response can contain both
+accepted jobs and rejected item errors; the manifest preserves both. Polling
+uses the returned batch ID. A queued job is not a completed video.
 
-The checked-in sample media comes from Zvid's stock library.
+API submission retries are disabled because a lost response may hide an
+accepted paid request. Transient polling errors stop the process; use resume
+later. Keep the journal until the outputs are stored and reviewed.
 
-## Community and support
+Run `node src/index.js --help` for all options. The default batch size is 100;
+the API hard limit is 500, and an account's limit may be lower. Reduce
+`--batch-size` when the API reports that limit. The default polling deadline is
+30 minutes; reaching it does not cancel server jobs.
 
-Join the [Zvid community on Discord](https://discord.gg/MZyWKqHDj3) to ask
-questions, discuss video automation workflows, and share what you build.
-For private account or billing questions, contact us at [https://zvid.io/contact](https://zvid.io/contact).
+Exit codes: `0` all selected work completed (and downloaded unless disabled),
+`1` configuration, validation, submission or polling error, `2` incomplete
+work, render rejection/failure, download failure or polling timeout.
+
+## Customization
+
+Start with `campaign.json` for brand, copy, accent color and music. Change a
+single recipient in `data/customers.csv` to test a new product or offer. Change
+`template.json` for design and timing; you can build a project in the
+[Zvid editor](https://editor.zvid.io). Validate again after each change, then
+review one complete output before increasing the number of rows.
+
+See [validation and estimates](https://docs.zvid.io/docs/validate-and-estimate/),
+[credits and plans](https://docs.zvid.io/docs/credits-and-plans/) and
+[authentication](https://docs.zvid.io/docs/authentication/) for the API contract.
+An optional `ZVID_WEBHOOK_URL` adds callbacks; it does not disable polling.
+
+## Other integrations in this repository
+
+The repository also retains [n8n examples](https://github.com/Zvid-io/bulk-personalized-videos/tree/master/n8n) and
+[Make examples](https://github.com/Zvid-io/bulk-personalized-videos/tree/master/make). They have their own setup and behavior and do
+not inherit this Node.js runner's saved-state recovery. The article's Node.js
+ZIP includes only the CLI, tests, inputs, dependency files and license.
+
+## Support
+
+For help, visit [https://zvid.io/contact](https://zvid.io/contact).

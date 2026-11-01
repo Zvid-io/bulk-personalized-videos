@@ -2,7 +2,7 @@
   "name": "bulk-personalized-videos",
   "version": "1.0.0",
   "private": true,
-  "description": "Bulk video generation with the Zvid API — render personalized videos at scale from a CSV/spreadsheet: one branded, automated video per customer, product, or listing. Node.js example using Zvid's bulk render endpoint and template variables.",
+  "description": "Personalized ecommerce offer videos with Node.js and the Zvid API, with validation, saved batch state and resumable downloads.",
   "keywords": [
     "zvid",
     "bulk video generation",
@@ -23,14 +23,13 @@
     "nodejs"
   ],
   "homepage": "https://zvid.io",
-  "docs": "https://docs.zvid.io/automation/bulk-rendering",
+  "docs": "https://docs.zvid.io/docs/automation/bulk-rendering/",
   "repository": {
     "type": "git",
-    "url": "https://github.com/zvid/zvid-examples",
-    "directory": "bulk-personalized-videos"
+    "url": "https://github.com/Zvid-io/bulk-personalized-videos.git"
   },
   "bugs": {
-    "url": "https://github.com/zvid/zvid-examples/issues"
+    "url": "https://zvid.io/contact"
   },
   "author": "Zvid (https://zvid.io/contact)",
   "license": "MIT",
@@ -44,10 +43,10 @@
     "sample": "node src/index.js --limit 2",
     "make:local": "node make/generate-local-blueprints.mjs",
     "make:validate": "node make/validate-blueprints.mjs",
-    "test": "node make/validate-blueprints.mjs"
+    "test": "node --test tests/*.test.js"
   },
   "dependencies": {
-    "csv-parse": "^6.0.0",
-    "@zvid/sdk": "^0.2.0"
+    "@zvid/sdk": "^0.2.0",
+    "csv-parse": "7.0.3"
   }
 }

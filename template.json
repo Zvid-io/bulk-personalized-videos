@@ -14,12 +14,12 @@
     "offerKicker": "YOUR PERSONAL OFFER",
     "discountLabel": "20% OFF",
     "productName": "The Field Watch",
-    "productMeta": "Sapphire glass · Italian leather",
-    "productImage": "https://images.pexels.com/photos/11403924/pexels-photo-11403924.jpeg?auto=compress&cs=tinysrgb&h=1920",
+    "productMeta": "Black dial · Mesh strap",
+    "productImage": "https://cdn.zvid.io/blog/ecommerce-product-video-api/f4703772db43/field-watch.jpg",
     "couponCode": "ALEX-20",
     "ctaHeadline": "Your code is ready.",
     "ctaUrl": "arcadia.example/offer",
-    "musicUrl": "https://cdn.pixabay.com/audio/2025/03/19/audio_56ae1dae5f.mp3"
+    "musicUrl": "https://cdn.zvid.io/blog/ecommerce-product-video-api/6497ff1dfad9/campaign-music.mp3"
   },
   "scenes": [
     {
@@ -50,7 +50,9 @@
           "enterAnimation": "fade",
           "exitEnd": 3.8,
           "style": {
-            "fontFamily": "Archivo"
+            "fontFamily": "Archivo",
+            "color": "#000000",
+            "backgroundColor": "{{accentColor}}"
           },
           "html": "<div style='text-align:center; color:rgba(0,0,0,0.55); font-size:24px; font-weight:800; letter-spacing:10px;'>{{brandName}}</div><div style='margin-top:8px; text-align:center; color:#000000; font-size:64px; font-weight:800; letter-spacing:12px; text-transform:uppercase;'>HEY, {{firstName}}</div>"
         },
@@ -66,7 +68,8 @@
           "enterAnimation": "smoothup",
           "exitEnd": 3.8,
           "style": {
-            "fontFamily": "Archivo"
+            "fontFamily": "Archivo",
+            "color": "#FFFFFF"
           },
           "html": "<div style='text-align:center; color:#FFFFFF; font-size:96px; line-height:1; font-weight:800; letter-spacing:-3px;'>{{headline}}</div><div style='margin-top:28px; text-align:center; color:{{accentColor}}; font-size:34px; font-weight:700; letter-spacing:2px;'>{{subheadline}}</div>"
         },
@@ -82,7 +85,8 @@
           "enterAnimation": "circleopen",
           "exitEnd": 3.8,
           "style": {
-            "fontFamily": "Archivo"
+            "fontFamily": "Archivo",
+            "color": "#7A7A7A"
           },
           "html": "<div style='text-align:center; color:#7A7A7A; font-size:26px; font-weight:800; letter-spacing:5px;'>{{offerKicker}}</div><div style='margin-top:16px; display:inline-block; border:2px solid {{accentColor}}; color:{{accentColor}}; border-radius:16px; padding:20px 44px; font-size:72px; font-weight:800; letter-spacing:4px;'>{{discountLabel}}</div>"
         }
@@ -128,7 +132,9 @@
           "enterAnimation": "smoothleft",
           "exitEnd": 3.4,
           "style": {
-            "fontFamily": "Archivo"
+            "fontFamily": "Archivo",
+            "color": "#000000",
+            "backgroundColor": "{{accentColor}}"
           },
           "html": "<div style='display:inline-block; background:{{accentColor}}; color:#000000; border-radius:10px; padding:14px 34px; font-size:60px; font-weight:800; letter-spacing:-1px;'>{{discountLabel}}</div>"
         },
@@ -144,7 +150,8 @@
           "enterAnimation": "smoothup",
           "exitEnd": 3.4,
           "style": {
-            "fontFamily": "Archivo"
+            "fontFamily": "Archivo",
+            "color": "#FFFFFF"
           },
           "html": "<div style='color:#FFFFFF; font-size:88px; line-height:1; font-weight:800; letter-spacing:-2px;'>{{productName}}</div><div style='margin-top:16px; color:#B8B8B8; font-size:32px; font-weight:500;'>{{productMeta}}</div>"
         }
@@ -176,7 +183,8 @@
           "enterAnimation": "smoothup",
           "exitEnd": 4,
           "style": {
-            "fontFamily": "Archivo"
+            "fontFamily": "Archivo",
+            "color": "#FFFFFF"
           },
           "html": "<div style='text-align:center; color:#FFFFFF; font-size:70px; line-height:1.06; font-weight:800; letter-spacing:-2px;'>{{ctaHeadline}}</div>"
         },
@@ -191,7 +199,9 @@
           "enterAnimation": "circleopen",
           "exitEnd": 4,
           "style": {
-            "fontFamily": "Archivo"
+            "fontFamily": "Archivo",
+            "color": "#000000",
+            "backgroundColor": "{{accentColor}}"
           },
           "html": "<div style='text-align:center; color:#000000; font-size:76px; font-weight:800; letter-spacing:2px;'>{{couponCode}}</div>"
         },
@@ -206,7 +216,8 @@
           "enterAnimation": "fade",
           "exitEnd": 4,
           "style": {
-            "fontFamily": "Archivo"
+            "fontFamily": "Archivo",
+            "color": "{{accentColor}}"
           },
           "html": "<div style='text-align:center; color:{{accentColor}}; font-size:28px; font-weight:700; letter-spacing:4px;'>{{ctaUrl}}</div>"
         }

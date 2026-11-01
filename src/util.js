@@ -1,7 +1,7 @@
 /** Small shared helpers: .env loading, terminal colors, file download. */
 
 import { createWriteStream, existsSync, readFileSync } from 'node:fs';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, rename, rm } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -42,12 +42,18 @@ export const color = {
  * @param {string} filePath
  */
 export async function downloadFile(url, filePath) {
-  const response = await fetch(url);
+  const response = await fetch(url, { signal: AbortSignal.timeout(120000) });
   if (!response.ok || !response.body) {
     throw new Error(`Download failed (${response.status}) for ${url}`);
   }
   await mkdir(dirname(filePath), { recursive: true });
-  await pipeline(Readable.fromWeb(response.body), createWriteStream(filePath));
+  const partial = `${filePath}.part`;
+  try {
+    await pipeline(Readable.fromWeb(response.body), createWriteStream(partial));
+    await rename(partial, filePath);
+  } finally {
+    await rm(partial, { force: true });
+  }
 }
 
 /**
